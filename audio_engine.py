@@ -1,24 +1,29 @@
-import urllib.parse
-import random
+import requests
+import base64
 
 def get_audio_url(prompt):
     """
-    প্রম্পট অনুযায়ী এআই মিউজিক/গান জেনারেট করার ডিরেক্ট লিংক তৈরি করে।
+    Hugging Face-এর Meta MusicGen মডেল ব্যবহার করে গান/মিউজিক তৈরির লজিক।
     """
     try:
         if not prompt:
             return None
-            
-        # অডিও ক্যাশ ভাঙার জন্য ইউনিক সিড
-        random_seed = random.randint(1, 9999999)
+
+        # Meta-র MusicGen মডেলের জন্য ফ্রি এপিআই ইউআরএল
+        API_URL = "https://api-inference.huggingface.co/models/facebook/musicgen-small"
         
-        # প্রম্পটটি এনকোড করা
-        encoded_prompt = urllib.parse.quote(prompt)
+        # প্রম্পট অনুযায়ী মিউজিক রিকোয়েস্ট
+        payload = {"inputs": prompt}
+        response = requests.post(API_URL, json=payload, timeout=60)
         
-        # Pollinations AI-এর ফাস্ট এবং ফ্রি টেক্সট-টু-অডিও/মিউজিক API লিংক
-        # এটি সরাসরি একটি অডিও ফাইল (.mp3/.wav) রিটার্ন করে যা HTML5 অডিও প্লেয়ারে বাজানো যায়
-        audio_url = f"https://audio.pollinations.ai/p/{encoded_prompt}?seed={random_seed}"
-        
-        return audio_url
-    except Exception:
+        if response.status_code == 200:
+            # অডিও ফাইল বাইনারি থেকে Base64 ডেটাতে রূপান্তর (যা সরাসরি HTML5 অডিও প্লেয়ারে চলে)
+            audio_bytes = response.content
+            base64_audio = base64.b64encode(audio_bytes).decode('utf-8')
+            return f"data:audio/wav;base64,{base64_audio}"
+        else:
+            return None
+
+    except Exception as e:
+        print("Audio Generation Error:", str(e))
         return None
