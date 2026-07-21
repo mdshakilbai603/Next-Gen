@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from image_engine import get_image_url
-from audio_engine import get_audio_url  # নতুন অডিও ইঞ্জিন ইমপোর্ট করা হলো
+from audio_engine import get_audio_url
 
 app = Flask(__name__, template_folder=".")
 
@@ -16,22 +16,21 @@ def generate():
             return jsonify({'error': 'Invalid request'}), 400
             
         prompt = data.get('prompt')
-        mode = data.get('mode', 'Image Engine.py')  # ফ্রন্টএন্ড থেকে আসা মোড ট্র্যাক করা
+        mode = str(data.get('mode', '')).lower()
         ratio = data.get('ratio', '1:1')
         
         if not prompt:
             return jsonify({'error': 'Prompt missing'}), 400
             
-        # ১. যদি ইউজার 'Audio Music.py' বা 'Voice Synthesizer.py' সিলেক্ট করে গান বানাতে চায়
-        if mode in ['Audio Music.py', 'Voice Synthesizer.py']:
+        # যদি ইউজার অডিও/মিউজিক বা ভয়েস সিলেক্ট করে থাকে
+        if 'audio' in mode or 'music' in mode or 'voice' in mode:
             audio_url = get_audio_url(prompt)
             if audio_url:
-                # ফ্রন্টএন্ড যাতে ফাইলটি ডাউনলোড বা প্লে করতে পারে তার জন্য ডিরেক্ট রিডাইরেক্ট বা লিংক রিটার্ন
                 return jsonify({'result': audio_url})
             else:
                 return jsonify({'error': 'Audio generation failed'}), 500
                 
-        # ২. ডিফল্ট টেক্সট-টু-ইমেজ (Image Engine) বা লুপ জিআইএফ (loop GIF)
+        # অন্যথায় ইমেজ জেনারেশন
         else:
             image_url = get_image_url(prompt, ratio)
             if image_url:
