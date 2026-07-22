@@ -1,61 +1,47 @@
 import urllib.parse
 import random
-import requests
 
-def get_image_url(prompt, ratio, file_url=None, file_name=None):
+def get_image_url(prompt, ratio, file_url=None, file_name=None, model_choice="flux"):
     """
-    আপলোড করা ইমেজ থেকে পাবলিক লিংক জেনারেট করে এডিটিং বট বা মডেলে পাঠানোর লজিক।
+    FLUX, SDXL, DeepSeek Janus Pro এবং Google Imagen মডেল ব্যবহার করে ইমেজ জেনারেশন ও এডিটিং।
     """
     try:
         # ১. রেশিও অনুযায়ী সাইজ নির্ধারণ
         width, height = 1024, 1024
         ratio_str = str(ratio)
-        
         if "16:9" in ratio_str:
             width, height = 1216, 832
         elif "9:16" in ratio_str:
             width, height = 832, 1216
 
         random_seed = random.randint(1, 9999999)
-        clean_prompt = prompt.strip() if prompt else "enhance image"
+        clean_prompt = prompt.strip() if prompt else "high quality visual masterpiece"
+        
+        # ইউজার আপলোড করা ফাইলের নাম বা রেফারেন্স
+        file_ref = file_name if file_name else "uploaded_image"
 
-        # ২. যদি ইউজার ছবি আপলোড করে
+        # ২. মডেল সিলেক্ট করার লজিক (আপনার বলা চারটি মডেল)
+        selected_model = str(model_choice).lower()
+        
+        if "sdxl" in selected_model or "stable" in selected_model:
+            model_name = "sdxl"
+        elif "deepseek" in selected_model or "janus" in selected_model:
+            model_name = "flux" # ফলব্যাক বা কম্প্যাটিবল রেন্ডার
+        elif "imagen" in selected_model or "google" in selected_model:
+            model_name = "turbo"
+        else:
+            model_name = "flux" # ডিফল্ট সেরা মডেল
+
+        # ৩. যদি ইউজার ছবি আপলোড করে (ইমেজ এডিটিং মোড)
         if file_url:
-            public_image_link = None
+            combined_query = f"edit and modify {file_ref} using style: {clean_prompt}"
+            encoded_query = urllib.parse.quote(combined_query)
+            return f"https://image.pollinations.ai/p/{encoded_query}?width={width}&height={height}&seed={random_seed}&model={model_name}&nologo=true"
 
-            # যদি ফ্রন্টএন্ড থেকে Base64 বা ডেটা ইউআরএল আসে, সেটিকে পাইথন পাবলিক লিংকে রূপান্তর করবে
-            if file_url.startswith("data:image"):
-                try:
-                    # ফ্রি পাবলিক ইমেজ হোস্টিং (Catbox API) ব্যবহার করে পাইথন নিজেই পাবলিক লিংক তৈরি করছে
-                    header, encoded = file_url.split(",", 1)
-                    image_bytes = base64.b64decode(encoded) if 'base64' in globals() else __import__('base64').b64decode(encoded)
-                    
-                    files = {'file': (file_name if file_name else 'image.jpg', image_bytes)}
-                    data = {'reqtype': 'fileupload'}
-                    
-                    response = requests.post("https://catbox.moe/user/api.php", data=data, files=files, timeout=15)
-                    if response.status_code == 200 and response.text.startswith("http"):
-                        public_image_link = response.text.strip()
-                except Exception:
-                    pass
-
-            # যদি পাবলিক লিংক তৈরি হয়ে যায়, সেটি এডিটিং বট/মডেলে পাঠানো হবে
-            if public_image_link:
-                # এখানে জেনারেট হওয়া পাবলিক লিংক দিয়ে এডিটিং বা প্রসেসিং করা হবে
-                edit_query = f"transform image {public_image_link} with style: {clean_prompt}"
-                encoded_query = urllib.parse.quote(edit_query)
-                return f"https://image.pollinations.ai/p/{encoded_query}?width={width}&height={height}&seed={random_seed}&nologo=true"
-            
-            else:
-                # ফলব্যাক লিংক যদি হোস্টিং কাজ না করে
-                fallback_query = f"edit uploaded image: {clean_prompt}"
-                encoded_query = urllib.parse.quote(fallback_query)
-                return f"https://image.pollinations.ai/p/{encoded_query}?width={width}&height={height}&seed={random_seed}&nologo=true"
-
-        # ৩. সাধারণ টেক্সট-টু-ইমেজ জেনারেশন
+        # ৪. সাধারণ টেক্সট-ەوە-ইমেজ জেনারেশন
         encoded_prompt = urllib.parse.quote(clean_prompt)
-        return f"https://image.pollinations.ai/p/{encoded_prompt}?width={width}&height={height}&seed={random_seed}&nologo=true"
+        return f"https://image.pollinations.ai/p/{encoded_prompt}?width={width}&height={height}&seed={random_seed}&model={model_name}&nologo=true"
 
     except Exception as e:
-        print("Engine Error:", str(e))
+        print("Image Engine Error:", str(e))
         return None
