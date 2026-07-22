@@ -18,21 +18,29 @@ def generate():
         prompt = data.get('prompt')
         mode = str(data.get('mode', '')).lower()
         ratio = data.get('ratio', '1:1')
+        file_url = data.get('fileUrl')
+        file_name = data.get('fileName')
         
-        if not prompt:
-            return jsonify({'error': 'Prompt missing'}), 400
-            
-        # যদি ইউজার অডিও/মিউজিক বা ভয়েস সিলেক্ট করে থাকে
+        # অডিও বা ভয়েস মোড
         if 'audio' in mode or 'music' in mode or 'voice' in mode:
+            if not prompt:
+                return jsonify({'error': 'Prompt missing for audio'}), 400
+                
             audio_url = get_audio_url(prompt)
             if audio_url:
                 return jsonify({'result': audio_url})
             else:
                 return jsonify({'error': 'Audio generation failed'}), 500
                 
-        # অন্যথায় ইমেজ জেনারেশন
+        # ইমেজ জেনারেশন বা এডিটিং মোড (চারটি মডেলের যেকোনো একটি সিলেক্ট করার সুবিধা সহ)
         else:
-            image_url = get_image_url(prompt, ratio)
+            if not prompt and not file_url:
+                return jsonify({'error': 'Prompt or File missing for image'}), 400
+                
+            # ফ্রন্টএন্ড বা মোড থেকে মডেলের নাম পাস করা যেতে পারে, ডিফল্ট 'flux'
+            model_choice = data.get('model', 'flux')
+            
+            image_url = get_image_url(prompt, ratio, file_url, file_name, model_choice)
             if image_url:
                 return jsonify({'result': image_url})
             else:
